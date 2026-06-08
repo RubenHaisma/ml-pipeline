@@ -103,6 +103,16 @@ Everything in this repo is verified on CPU — no GPU path exists, nothing is ha
 | MLflow local sqlite store                       | ✅ verified |
 | MLflow server via docker-compose                | ✅ compose provided, runs locally |
 
+## Agent-friendly by design
+
+Every command is non-interactive, emits a single JSON object with `--json`, and returns a load-bearing exit code — so AI coding agents (**Codex, Claude Code, Cursor, Copilot, Windsurf, …**) and plain scripts can drive the full train → eval → calibrate → drift → infer loop and parse results with no TTY, no UI, no screen-scraping.
+
+```bash
+mlp train configs/churn.yaml --json   # -> {"ok": true, "metrics": {"roc_auc": ..., "lift_over_baseline": ...}}   exit 0
+```
+
+Agent instructions live in [`AGENTS.md`](AGENTS.md) — the [cross-tool standard](https://agents.md) read natively by Codex, Cursor, Copilot, and more. `CLAUDE.md` is a symlink to it, so every tool reads one source of truth.
+
 ## CI does more than lint
 
 Most repos' CI checks that the code *parses*. This one checks that the *pipeline works* — three things beyond lint + tests, all stdlib, no extra deps:
