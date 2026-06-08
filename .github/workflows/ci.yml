@@ -32,3 +32,6 @@ jobs:
         run: |
           uv run mlp train configs/churn.yaml --json | tee metrics.json
           uv run python scripts/ci_report.py metrics.json >> "$GITHUB_STEP_SUMMARY"
+      - name: notebooks execute (no dead cells)
+        run: |
+          for nb in notebooks/*.py; do echo "running $nb"; uv run python "$nb" || exit 1; done

@@ -1,4 +1,4 @@
-.PHONY: install up down fmt lint test doctor train eval calibrate drift demo repro readme summary clean
+.PHONY: install up down fmt lint test doctor train eval calibrate drift demo repro readme summary notebooks clean
 
 install:  ## uv sync with dev extras
 	uv sync --extra dev
@@ -47,6 +47,9 @@ readme:  ## run the README's ci-test commands so the docs can't go stale
 
 summary:  ## train + print the markdown metrics summary CI posts to the run page
 	uv run mlp train configs/churn.yaml --json | uv run python scripts/ci_report.py
+
+notebooks:  ## execute every marimo notebook headless (fails on a dead cell)
+	@for nb in notebooks/*.py; do echo "running $$nb"; uv run python "$$nb" || exit 1; done
 
 clean:
 	rm -rf artifacts mlruns mlartifacts mlflow.db metrics.json .pytest_cache .ruff_cache
