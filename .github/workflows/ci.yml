@@ -1,0 +1,23 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - run: uv sync --extra dev
+      - name: lint
+        run: uv run ruff check src tests
+      - name: format check
+        run: uv run ruff format --check src tests
+      - name: doctor (json must be valid + exit 0)
+        run: uv run mlp doctor --json
+      - name: tests
+        run: uv run pytest

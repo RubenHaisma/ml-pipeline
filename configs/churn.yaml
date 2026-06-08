@@ -1,0 +1,12 @@
+# Reference churn train config. Copy this per experiment; one config = one run shape.
+name: churn-gb
+dataset: synthetic        # 'synthetic' (deterministic generator) or a path to a CSV
+target: churn             # label column name (used when dataset is a CSV)
+model: gradient_boosting  # gradient_boosting | logistic
+params:
+  n_estimators: 200
+  max_depth: 3
+  learning_rate: 0.1
+n_samples: 4000
+test_size: 0.25
+seed: 42
