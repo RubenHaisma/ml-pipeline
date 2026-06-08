@@ -14,10 +14,21 @@ jobs:
           enable-cache: true
       - run: uv sync --extra dev
       - name: lint
-        run: uv run ruff check src tests
+        run: uv run ruff check src tests scripts
       - name: format check
-        run: uv run ruff format --check src tests
+        run: uv run ruff format --check src tests scripts
       - name: doctor (json must be valid + exit 0)
         run: uv run mlp doctor --json
       - name: tests
         run: uv run pytest
+
+      # ── signature touches: CI doesn't just check the code, it runs the
+      #    pipeline, proves it's deterministic, and keeps the docs honest ──
+      - name: reproducibility (same seed → identical metrics)
+        run: uv run python scripts/check_repro.py -- uv run mlp train configs/churn.yaml
+      - name: README commands stay runnable
+        run: uv run python scripts/test_readme.py
+      - name: train + publish live metrics to the run summary
+        run: |
+          uv run mlp train configs/churn.yaml --json | tee metrics.json
+          uv run python scripts/ci_report.py metrics.json >> "$GITHUB_STEP_SUMMARY"

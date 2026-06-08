@@ -1,5 +1,7 @@
 # ml-pipeline
 
+[![ci](https://github.com/RubenHaisma/ml-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/RubenHaisma/ml-pipeline/actions/workflows/ci.yml)
+
 **Classic ML done right.** A CLI-first churn-style tabular classification pipeline whose value is the rigor most portfolios skip: an **honest baseline**, probability **calibration**, and **drift monitoring**. Train → eval-against-baseline → calibrate → monitor drift → serve, tracked in MLflow, driven by one machine-readable binary (`mlp`). Fully CPU-runnable, deterministic, and verified end-to-end.
 
 > Derives from [`ml-pipeline-template`](https://github.com/rubenhaisma/ml-pipeline-template) — same operational shell (CLI, `--json`, load-bearing exit codes, MLflow as source of truth). The difference here is the ML: not a model that ranks well in a notebook, but one with a baseline you can trust, probabilities you can calibrate, and a drift report you can act on.
@@ -16,6 +18,7 @@ Plus the house style: **CLI-first**, **`--json` on every command**, **load-beari
 
 ## Quickstart
 
+<!-- ci-test -->
 ```bash
 uv sync --extra dev          # install (CPU only, no GPU, no downloads)
 uv run mlp doctor            # environment readiness check (--json for CI)
@@ -26,16 +29,18 @@ uv run mlp drift --reference configs/churn.yaml --shift 0.5
 uv run mlp infer churn-gb
 ```
 
+> The block above is marked `<!-- ci-test -->` — **CI runs these exact commands on every push**, so this quickstart can never silently drift from the code.
+
 Output of `train` (human mode):
 
 ```
 trained churn-gb (gradient_boosting)
-  roc_auc 0.8628  (baseline 0.5, lift +0.3628)
-  pr_auc 0.7295  f1 0.664  brier 0.1248
+  roc_auc 0.863  (baseline 0.5, lift +0.363)
+  pr_auc 0.7298  f1 0.664  brier 0.1247
   model -> artifacts/churn-gb/model.joblib
 ```
 
-The `DummyClassifier(strategy="prior")` baseline has no ranking power (ROC-AUC `0.5`), so the `+0.36` lift is real signal. `mlp calibrate` then improves Brier from `0.1248` to `0.1223`, and `mlp drift --shift 0.5` flags `support_calls` and `total_charges` (PSI `>= 0.25`) while leaving the unshifted features stable — see below.
+The `DummyClassifier(strategy="prior")` baseline has no ranking power (ROC-AUC `0.5`), so the `+0.36` lift is real signal. `mlp calibrate` then improves Brier from `0.1247` to `0.1223`, and `mlp drift --shift 0.5` flags `support_calls` and `total_charges` (PSI `>= 0.25`) while leaving the unshifted features stable — see below.
 
 `make demo` runs the full rigor loop (train → eval → calibrate → drift → infer).
 
@@ -97,6 +102,16 @@ Everything in this repo is verified on CPU — no GPU path exists, nothing is ha
 | `pytest` smoke + rigor suite + ruff in CI       | ✅ verified |
 | MLflow local sqlite store                       | ✅ verified |
 | MLflow server via docker-compose                | ✅ compose provided, runs locally |
+
+## CI does more than lint
+
+Most repos' CI checks that the code *parses*. This one checks that the *pipeline works* — three things beyond lint + tests, all stdlib, no extra deps:
+
+1. **It runs the pipeline and publishes the numbers.** Every push trains the churn model and posts a live metrics table (ROC-AUC, PR-AUC, F1, Brier, lift over baseline) to the GitHub Actions [run summary](https://github.com/RubenHaisma/ml-pipeline/actions) (`scripts/ci_report.py`). The numbers in CI are produced on that commit, not pasted by hand.
+2. **It keeps the docs honest.** The Quickstart block is marked `<!-- ci-test -->` and `scripts/test_readme.py` runs those exact commands in CI. Docs that drift from the code fail the build.
+3. **It proves determinism.** `scripts/check_repro.py` trains twice and asserts identical metrics — a seed is a promise, and for a model whose probabilities feed a retention budget that promise has to hold. CI verifies it.
+
+Run them locally too: `make summary`, `make readme`, `make repro`.
 
 ## License
 

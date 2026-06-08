@@ -1,4 +1,4 @@
-.PHONY: install up down fmt lint test doctor train eval calibrate drift demo clean
+.PHONY: install up down fmt lint test doctor train eval calibrate drift demo repro readme summary clean
 
 install:  ## uv sync with dev extras
 	uv sync --extra dev
@@ -10,10 +10,10 @@ down:  ## stop services (volumes preserved)
 	docker compose down
 
 fmt:  ## ruff format
-	uv run ruff format src tests
+	uv run ruff format src tests scripts
 
 lint:  ## ruff check
-	uv run ruff check src tests
+	uv run ruff check src tests scripts
 
 test:  ## pytest smoke suite
 	uv run pytest
@@ -39,5 +39,14 @@ demo: train  ## the full rigor loop: train -> eval -> calibrate -> drift -> infe
 	uv run mlp drift --reference configs/churn.yaml --shift 0.5
 	uv run mlp infer churn-gb
 
+repro:  ## prove training is deterministic (same seed → identical metrics)
+	uv run python scripts/check_repro.py -- uv run mlp train configs/churn.yaml
+
+readme:  ## run the README's ci-test commands so the docs can't go stale
+	uv run python scripts/test_readme.py
+
+summary:  ## train + print the markdown metrics summary CI posts to the run page
+	uv run mlp train configs/churn.yaml --json | uv run python scripts/ci_report.py
+
 clean:
-	rm -rf artifacts mlruns mlartifacts mlflow.db .pytest_cache .ruff_cache
+	rm -rf artifacts mlruns mlartifacts mlflow.db metrics.json .pytest_cache .ruff_cache

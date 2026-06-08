@@ -42,8 +42,15 @@ _MODELS = {
 }
 
 
-def build_pipeline(model_name: str, params: dict[str, Any]) -> Pipeline:
-    """A real feature pipeline: scale numerics, one-hot categoricals, then fit."""
+def build_pipeline(model_name: str, params: dict[str, Any], seed: int = 42) -> Pipeline:
+    """A real feature pipeline: scale numerics, one-hot categoricals, then fit.
+
+    ``seed`` is threaded into the estimator's ``random_state`` so training is
+    bit-for-bit reproducible: GradientBoosting (and LogisticRegression's solvers)
+    carry internal randomness that, left unseeded, makes two runs of the same
+    config disagree in the 4th decimal. An explicit caller ``random_state`` in
+    ``params`` wins.
+    """
     if model_name not in _MODELS:
         raise CliError(f"unknown model '{model_name}', choose from {sorted(_MODELS)}")
 
@@ -57,7 +64,7 @@ def build_pipeline(model_name: str, params: dict[str, Any]) -> Pipeline:
             ),
         ]
     )
-    estimator = _MODELS[model_name](**params)
+    estimator = _MODELS[model_name](random_state=seed, **params)
     return Pipeline([("preprocess", preprocess), ("model", estimator)])
 
 
@@ -103,7 +110,7 @@ def train(cfg: TrainConfig, out_dir: Path) -> dict[str, Any]:
         x, y, test_size=cfg.test_size, random_state=cfg.seed, stratify=y
     )
 
-    pipe = build_pipeline(cfg.model, cfg.params)
+    pipe = build_pipeline(cfg.model, cfg.params, seed=cfg.seed)
     pipe.fit(x_tr, y_tr)
 
     baseline = DummyClassifier(strategy="prior").fit(x_tr, y_tr)
